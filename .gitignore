@@ -9,7 +9,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment variables and local secrets
+# Environment variables and local secrets (keep local env files untracked)
 .env
 .env.*
 !.env.example
@@ -32,4 +32,3 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
-
