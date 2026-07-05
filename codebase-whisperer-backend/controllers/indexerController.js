@@ -14,10 +14,19 @@ const fetchAndIndexFile = async ({ owner, repoName, filePath, userId, repoId, gi
     const base64Content = githubResponse.data.content;
     const sourceCode = Buffer.from(base64Content, 'base64').toString('utf-8');
 
-    const splitter = RecursiveCharacterTextSplitter.fromLanguage("js", {
-        chunkSize: 220,
-        chunkOverlap: 20,
-    });
+    const ext = filePath.split('.').pop().toLowerCase();
+    let lang = "js";
+    
+    if (ext === "py") lang = "python";
+    if (["cpp", "cc", "h", "hpp"].includes(ext)) lang = "cpp";
+    if (ext === "go") lang = "go";
+    if (ext === "java") lang = "java";
+
+    const supportedExts = ["js", "jsx", "ts", "tsx", "py", "cpp", "cc", "h", "hpp", "java", "go"];
+    const splitter = supportedExts.includes(ext)
+        ? RecursiveCharacterTextSplitter.fromLanguage(lang, { chunkSize: 220, chunkOverlap: 20 })
+        : new RecursiveCharacterTextSplitter({ chunkSize: 220, chunkOverlap: 20 });
+
     const chunks = await splitter.createDocuments([sourceCode]);
 
     const mappedChunks = chunks.map(chunk => {
@@ -30,19 +39,21 @@ const fetchAndIndexFile = async ({ owner, repoName, filePath, userId, repoId, gi
         return chunk;
     });
 
-    await SupabaseVectorStore.fromDocuments(
-        mappedChunks,
-        embeddingModel,
-        {
-            client: supabaseClient,
-            tableName: "documents",
-            queryName: "match_documents"
-        }
-    );
+    if (mappedChunks.length > 0) {
+        await SupabaseVectorStore.fromDocuments(
+            mappedChunks,
+            embeddingModel,
+            {
+                client: supabaseClient,
+                tableName: "documents",
+                queryName: "match_documents"
+            }
+        );
+    }
     return chunks.length;
 };
 
-const crawlDirectory = async ({ owner, repoName, dirPath, userId, repoId, githubRepoId, embeddingModel }) => {
+const crawlDirectory = async ({ owner, repoName, dirPath, userId, repoId, githubRepoId, embeddingModel, discoveredFiles = [] }) => {
     const githubApiUrl = `https://api.github.com/repos/${owner}/${repoName}/contents/${dirPath}`;
     const githubResponse = await axios.get(githubApiUrl, {
         headers: { 'User-Agent': 'Codebase-Whisperer-App' }
@@ -52,7 +63,7 @@ const crawlDirectory = async ({ owner, repoName, dirPath, userId, repoId, github
     const items = Array.isArray(githubResponse.data) ? githubResponse.data : [githubResponse.data];
 
     for (const item of items) {
-        if (item.type === "file" && item.name.endsWith(".js")) {
+        if (item.type === "file" && /\.(js|jsx|ts|tsx|py|cpp|cc|h|hpp|java|go)$/i.test(item.name)) {
             const chunksCount = await fetchAndIndexFile({
                 owner,
                 repoName,
@@ -63,20 +74,22 @@ const crawlDirectory = async ({ owner, repoName, dirPath, userId, repoId, github
                 embeddingModel
             });
             totalChunks += chunksCount;
+            discoveredFiles.push({ name: item.name, path: item.path });
         } else if (item.type === "dir") {
-            const chunksCount = await crawlDirectory({
+            const result = await crawlDirectory({
                 owner,
                 repoName,
                 dirPath: item.path,
                 userId,
                 repoId,
                 githubRepoId,
-                embeddingModel
+                embeddingModel,
+                discoveredFiles
             });
-            totalChunks += chunksCount;
+            totalChunks += result.totalChunks;
         }
     }
-    return totalChunks;
+    return { totalChunks, discoveredFiles };
 };
 
 export const triggerMockIndex = async (req, res) => {
@@ -105,14 +118,16 @@ export const triggerMockIndex = async (req, res) => {
             model: "BAAI/bge-small-en-v1.5",
         });
 
-        const totalChunksGenerated = await crawlDirectory({
+        const filesAcc = [];
+        const result = await crawlDirectory({
             owner,
             repoName,
             dirPath: directoryPath,
             userId,
             repoId: repo._id.toString(),
             githubRepoId,
-            embeddingModel
+            embeddingModel,
+            discoveredFiles: filesAcc
         });
 
         repo.indexingStatus = "completed";
@@ -122,7 +137,8 @@ export const triggerMockIndex = async (req, res) => {
         return res.status(200).json({
             message: "GitHub directory crawled and indexed successfully",
             repositoryId: repo._id,
-            totalChunksGenerated,
+            totalChunksGenerated: result.totalChunks,
+            files: result.discoveredFiles,
             status: repo.indexingStatus
         });
 

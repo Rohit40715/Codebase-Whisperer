@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import indexerRoutes from "./routes/indexerRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/codebase-wh
 
 app.use("/api", indexerRoutes);
 app.use("/api", chatRoutes);
+app.use("/api", authRoutes);
 
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "active" });

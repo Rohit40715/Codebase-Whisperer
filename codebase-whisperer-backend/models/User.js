@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String },
     avatarUrl: { type: String },
-    accessToken: { type: String, required: true }
-}, { timestamps: true });
+    createdAt: { type: Date, default: Date.now }
+});
 
-export default mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+export default User;
