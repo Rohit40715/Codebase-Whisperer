@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String },
     avatarUrl: { type: String },
+    githubAccessToken: { type: String }, // New field to securely store the session token
     createdAt: { type: Date, default: Date.now }
 });
 
