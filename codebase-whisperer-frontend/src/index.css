@@ -1,0 +1,7 @@
+body {
+  margin: 0;
+  background-color: #f0f2f5;
+}
+input, button {
+  font-family: monospace;
+}

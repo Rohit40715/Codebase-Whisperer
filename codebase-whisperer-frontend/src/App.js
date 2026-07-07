@@ -43,6 +43,12 @@ function App() {
     }, []);
 
     useEffect(() => {
+        if (userId && token) {
+            fetchUserHistory();
+        }
+    }, [userId, token]);
+
+    useEffect(() => {
         const handleMouseMove = (e) => {
             if (isResizingLeft.current) {
                 const newWidth = Math.max(200, Math.min(500, e.clientX));
@@ -67,6 +73,17 @@ function App() {
             window.removeEventListener("mouseup", handleMouseUp);
         };
     }, []);
+
+    const fetchUserHistory = async () => {
+        try {
+            const response = await axios.get(`http://localhost:5000/api/user/${userId}/repositories`);
+            if (response.data && response.data.length > 0) {
+                setIndexingStatus("Loaded existing workspace history from cloud storage.");
+            }
+        } catch (error) {
+            console.error(error.message);
+        }
+    };
 
     const startLeftResize = (e) => {
         e.preventDefault();
@@ -107,6 +124,9 @@ function App() {
     };
 
     const triggerRepositoryIndexing = async () => {
+        setWorkspaceFiles([]); 
+        setSelectedFile(null);
+        setFileContent("");
         setIndexingStatus("Cloning and indexing repository tree structures...");
         try {
             const response = await axios.post("http://localhost:5000/api/index", {
@@ -133,10 +153,8 @@ function App() {
         try {
             const githubApiUrl = `https://api.github.com/repos/${repoForm.owner}/${repoForm.repoName}/contents/${file.path}`;
             const response = await axios.get(githubApiUrl);
-            
             const base64Str = response.data.content.replace(/\s/g, "");
             const rawCode = decodeURIComponent(escape(window.atob(base64Str)));
-            
             setFileContent(rawCode);
         } catch (error) {
             setFileContent("// Failed to fetch file contents from source control:\n// " + error.message);
@@ -168,7 +186,7 @@ function App() {
         }
     };
 
-    const resetCache = () => {
+    const handleLogOutOnly = () => {
         localStorage.clear();
         setToken("");
         setActiveRepoId("");
@@ -177,7 +195,25 @@ function App() {
         setFileContent("");
         setChatHistory([]);
         setExpandedFolders({});
-        setIndexingStatus("System cache reset completed.");
+        setIndexingStatus("Logged out safely. Cloud data remains untouched.");
+    };
+
+    const handleFullDatabasePurge = async () => {
+        setIndexingStatus("Wiping cloud vector spaces and database profiles...");
+        try {
+            await axios.post("http://localhost:5000/api/purge", { userId });
+            localStorage.clear();
+            setToken("");
+            setActiveRepoId("");
+            setWorkspaceFiles([]);
+            setSelectedFile(null);
+            setFileContent("");
+            setChatHistory([]);
+            setExpandedFolders({});
+            setIndexingStatus("Full factory reset complete. Databases deleted.");
+        } catch (error) {
+            setIndexingStatus("Purge failed: " + (error.response?.data?.error || error.message));
+        }
     };
 
     const toggleFolder = (folderPath) => {
@@ -235,7 +271,7 @@ function App() {
                             borderRadius: "3px"
                         }}
                     >
-                        <span style={{ color: "#51a1fff" }}>📄</span> {node.name}
+                        <span style={{ color: "#51a1ff" }}>📄</span> {node.name}
                     </div>
                 );
             } else {
@@ -302,16 +338,19 @@ function App() {
                     )}
                 </div>
 
-                <button onClick={resetCache} style={{ marginTop: "15px", padding: "5px", backgroundColor: "#5a5a5a", color: "#fff", border: "none", cursor: "pointer", fontSize: "11px" }}>
-                    Reset Application Cache
-                </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "15px" }}>
+                    <button onClick={handleLogOutOnly} style={{ padding: "6px", backgroundColor: "#5a5a5a", color: "#fff", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "bold" }}>
+                        Log Out Safely
+                    </button>
+                    <button onClick={handleFullDatabasePurge} style={{ padding: "6px", backgroundColor: "#a63a3a", color: "#fff", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "bold" }}>
+                        Danger: Purge Database
+                    </button>
+                </div>
             </div>
 
             <div 
                 onMouseDown={startLeftResize} 
-                style={{ width: "4px", cursor: "col-resize", backgroundColor: "#2d2d2d", transition: "background 0.2s", zIndex: 10 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = "#007fd4"}
-                onMouseLeave={(e) => e.target.style.backgroundColor = "#2d2d2d"}
+                style={{ width: "4px", cursor: "col-resize", backgroundColor: "#2d2d2d", zIndex: 10 }}
             />
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#1e1e1e", overflow: "hidden" }}>
@@ -331,9 +370,7 @@ function App() {
 
             <div 
                 onMouseDown={startRightResize} 
-                style={{ width: "4px", cursor: "col-resize", backgroundColor: "#2d2d2d", transition: "background 0.2s", zIndex: 10 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = "#007fd4"}
-                onMouseLeave={(e) => e.target.style.backgroundColor = "#2d2d2d"}
+                style={{ width: "4px", cursor: "col-resize", backgroundColor: "#2d2d2d", zIndex: 10 }}
             />
 
             <div style={{ width: `${rightWidth}px`, backgroundColor: "#252526", borderLeft: "1px solid #3c3c3c", display: "flex", flexDirection: "column", boxSizing: "border-box", overflow: "hidden" }}>
