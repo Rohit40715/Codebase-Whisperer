@@ -10,6 +10,12 @@ Codebase Whisperer is a production-ready, multi-tenant Retrieval-Augmented Gener
 
 If the platform rendering this README does not support inline video, open [Demovid.mp4](./Demovid.mp4) directly.
 
+## Screenshots
+
+![Codebase Whisperer screenshot 1](./Screenshot%202026-07-07%20180257.png)
+
+![Codebase Whisperer screenshot 2](./Screenshot%202026-07-07%20180317.png)
+
 ## Table of contents
 
 - [Key Features](#key-features)
