@@ -41,10 +41,13 @@ export const handleGitHubCallback = async (req, res) => {
                 githubId,
                 username,
                 email,
-                avatarUrl
+                avatarUrl,
+                githubAccessToken: accessToken // Save access token for authenticated crawling
             });
-            await user.save();
+        } else {
+            user.githubAccessToken = accessToken; // Sync/update token if it changed
         }
+        await user.save();
 
         const token = jwt.sign(
             { userId: user._id, username: user.username },
