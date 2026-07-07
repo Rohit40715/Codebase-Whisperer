@@ -4,12 +4,11 @@ Codebase Whisperer is a production-ready, multi-tenant Retrieval-Augmented Gener
 
 🎥 Demo :
 
-<video controls width="720">
-  <source src="Demovid.mp4" type="video/mp4">
-  Your browser does not support the video tag. <a href="Demovid.mp4">Download the demo</a>.
+<video controls width="720" src="./Demovid.mp4">
+  Your browser does not support embedded video. <a href="./Demovid.mp4">Download the demo</a>.
 </video>
 
-If the platform rendering this README does not support inline video, open `Demovid.mp4` directly.
+If the platform rendering this README does not support inline video, open [Demovid.mp4](./Demovid.mp4) directly.
 
 ## Table of contents
 
@@ -50,7 +49,7 @@ GROQ_API_KEY=gsk_your_private_groq_cloud_access_credential_string
 HF_TOKEN=hf_your_huggingface_inference_api_token
 GITHUB_CLIENT_ID=your_github_oauth_app_client_id
 GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
-JWT_SECRET=your_jwt_signing_key
+JWT_SECRET=your_jwt
 GITHUB_DEV_OVERRIDE_TOKEN=your_personal_access_token_optional
 ```
 
