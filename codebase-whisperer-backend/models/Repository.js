@@ -6,11 +6,14 @@ const repositorySchema = new mongoose.Schema({
     name: { type: String, required: true },
     fullName: { type: String, required: true },
     cloneUrl: { type: String, required: true },
-    webhookId: { type: String },
+    owner: { type: String, default: "Unknown" },
+    repoName: { type: String, default: "Unknown" },
+    directoryPath: { type: String, default: "" },
+    indexingStatus: { type: String, default: "pending" },
     isIndexed: { type: Boolean, default: false },
-    indexingStatus: { type: String, enum: ["idle", "processing", "completed", "failed"], default: "idle" }
-}, { timestamps: true });
+    files: { type: Array, default: [] },
+    createdAt: { type: Date, default: Date.now }
+});
 
-repositorySchema.index({ userId: 1, githubRepoId: 1 }, { unique: true });
-
-export default mongoose.model("Repository", repositorySchema);
+const Repository = mongoose.model("Repository", repositorySchema);
+export default Repository;

@@ -1,74 +1,65 @@
+import { ChatGroq } from "@langchain/groq";
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
-import { ChatGroq } from "@langchain/groq";
 import { supabaseClient } from "../config/supabase.js";
 import ChatSession from "../models/ChatSession.js";
 
 export const handleChat = async (req, res) => {
     const { userId, repositoryId, message } = req.body;
+    
+    if (!userId || !repositoryId || !message) {
+        return res.status(400).json({ error: "Missing parameter fields required to verify target canvas conversation vectors" });
+    }
 
     try {
-        let session = await ChatSession.findOne({ userId, repositoryId });
-        if (!session) {
-            session = new ChatSession({
-                userId,
-                repositoryId,
-                messages: []
-            });
-        }
-
-        session.messages.push({ role: "user", content: message });
-        await session.save();
-
-        const embeddingModel = new HuggingFaceInferenceEmbeddings({
+        const embeddings = new HuggingFaceInferenceEmbeddings({
             apiKey: process.env.HF_TOKEN,
-            model: "BAAI/bge-small-en-v1.5",
+            model: "BAAI/bge-small-en-v1.5"
         });
 
-        const vectorStore = new SupabaseVectorStore(embeddingModel, {
+        const vectorStore = new SupabaseVectorStore(embeddings, {
             client: supabaseClient,
             tableName: "documents",
-            queryName: "match_documents"
+            queryName: "match_documents",
+            filter: { repositoryId: repositoryId.toString() }
         });
 
-        const searchResults = await vectorStore.similaritySearch(message, 2, {
-            repositoryId: repositoryId
-        });
+        const documentationChunks = await vectorStore.similaritySearch(message, 4);
+        const contextPayload = documentationChunks.map(chunk => chunk.pageContent).join("\n\n");
 
-        const retrievedContext = searchResults.map(doc => doc.pageContent).join("\n\n");
+        const structuralPrompt = `Use this context to answer:\n${contextPayload || "No direct matching code found."}\n\nQuestion: ${message}`;
+        const modelEngine = new ChatGroq({ apiKey: process.env.GROQ_API_KEY, model: "llama-3.3-70b-versatile" });
+        
+        const generationOutput = await modelEngine.invoke([
+            { role: "user", content: structuralPrompt }
+        ]);
+        
+        const systemReply = generationOutput.content;
 
-        const llm = new ChatGroq({
-            apiKey: process.env.GROQ_API_KEY,
-            model: "llama-3.1-8b-instant",
-            temperature: 0.2
-        });
-
-        const structuredPrompt = `
-        You are Codebase Whisperer, an expert software engineering assistant.
-        Analyze the following retrieved source code context from the repository to answer the developer's question accurately.
-        If the context does not contain relevant information, explain that honestly.
-
-        --- CODEBASE CONTEXT ---
-        ${retrievedContext}
-
-        --- DEVELOPER QUESTION ---
-        ${message}
-
-        Provide a concise engineering analysis and explanation:
-        `;
-
-        const llmResponse = await llm.invoke(structuredPrompt);
-        const intelligenceReply = llmResponse.content;
-
-        session.messages.push({ role: "assistant", content: intelligenceReply });
+        let session = await ChatSession.findOne({ userId, repositoryId });
+        if (!session) {
+            session = new ChatSession({ userId, repositoryId, messages: [] });
+        }
+        session.messages.push({ role: "user", content: message });
+        session.messages.push({ role: "assistant", content: systemReply });
+        session.updatedAt = Date.now();
         await session.save();
 
-        return res.status(200).json({
-            sessionId: session._id,
-            chunksRetrieved: searchResults.length,
-            reply: intelligenceReply
-        });
+        return res.status(200).json({ reply: systemReply });
+    } catch (error) {
+        console.error("❌ [CHAT ROUTE CRITICAL ERROR]:", error.stack || error.message);
+        return res.status(500).json({ error: error.message });
+    }
+};
 
+export const handleChatMessage = handleChat;
+
+export const getChatHistory = async (req, res) => {
+    const { userId, repositoryId } = req.params;
+    try {
+        const session = await ChatSession.findOne({ userId, repositoryId });
+        if (!session) return res.status(200).json({ messages: [] });
+        return res.status(200).json(session);
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }

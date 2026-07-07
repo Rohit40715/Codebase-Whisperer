@@ -32,3 +32,8 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+ 
+# Backend-specific ignores
+codebase-whisperer-backend/node_modules/
+codebase-whisperer-backend/.env
+codebase-whisperer-backend/npm-debug.log*
