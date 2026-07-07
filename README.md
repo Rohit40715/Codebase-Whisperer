@@ -2,7 +2,14 @@
 
 Codebase Whisperer is a production-ready, multi-tenant Retrieval-Augmented Generation (RAG) platform that helps developer teams interact with source code at scale. Users can link public or private GitHub repositories, browse a structured file tree, and chat with the codebase to find bugs, generate documentation, and learn legacy patterns.
 
-🎥 Demo: [PLACEHOLDER — replace with your demo URL]
+🎥 Demo :
+
+<video controls width="720">
+  <source src="Demovid.mp4" type="video/mp4">
+  Your browser does not support the video tag. <a href="Demovid.mp4">Download the demo</a>.
+</video>
+
+If the platform rendering this README does not support inline video, open `Demovid.mp4` directly.
 
 ## Table of contents
 
@@ -105,10 +112,4 @@ Contributions are welcome. Please open issues or pull requests and include a cle
 
 This project does not include a license file. Add a `LICENSE` file (for example, MIT) if you want to permit open-source use.
 
----
 
-If you want, I can also:
-
-- add a short Troubleshooting section,
-- include a one-line Quick Start at the top,
-- or format the demo/video block when you provide the URL.
